@@ -46,6 +46,21 @@ function sess(t) {
   return { role: r.role, tid: r.tid || undefined };
 }
 
+function move(table, where, args, id, dir) {
+  const rows = all('SELECT id FROM ' + table + ' WHERE ' + where + ' ORDER BY sort,rowid', ...args);
+  const i = rows.findIndex(r => r.id === id), j = dir === 'up' ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= rows.length) return;
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+  rows.forEach((r, k) => run('UPDATE ' + table + ' SET sort=? WHERE id=?', k + 1, r.id));
+}
+function copySubjects(tid) {
+  run('DELETE FROM subjects WHERE tid=?', tid);
+  all("SELECT label FROM subjects WHERE tid='' ORDER BY sort,rowid").forEach((g, i) =>
+    run('INSERT INTO subjects(id,tid,label,sort) VALUES(?,?,?,?)', uid(), tid, g.label, i + 1));
+  setCfg('subj:' + tid, '1');
+}
+const nextSort = (table, where, ...a) => get('SELECT COALESCE(MAX(sort),0) m FROM ' + table + ' WHERE ' + where, ...a).m + 1;
+
 /* ── 資料包 ── */
 function bundle(s) {
   const admin = s.role === 'admin', w = admin ? '' : ' WHERE tid=?', a = admin ? [] : [s.tid];
@@ -54,8 +69,9 @@ function bundle(s) {
     teachers: all('SELECT * FROM teachers' + (admin ? '' : ' WHERE id=?'), ...a)
       .map(t => ({ id: t.id, name: t.name, cls: t.cls, limit: t.lim || 15, pw: admin ? (t.pw || '') : undefined })),
     students: all('SELECT id,tid,seat,name,code FROM students' + w + ' ORDER BY seat', ...a),
-    items: all('SELECT id,tid,type,label FROM items' + w, ...a),
-    records: all('SELECT id,sid,tid,type,label,note,date,ts FROM records' + w, ...a),
+    items: all('SELECT id,tid,type,label FROM items' + w + ' ORDER BY sort,rowid', ...a),
+    subjects: all('SELECT id,tid,label FROM subjects' + (admin ? '' : ' WHERE tid=?') + ' ORDER BY sort,rowid', ...a),
+    records: all('SELECT id,sid,tid,type,label,note,date,ts,subject FROM records' + w, ...a),
     periods: all('SELECT id,tid,label,pstart AS start,pend AS "end" FROM periods' + w, ...a)
   };
 }
@@ -89,7 +105,7 @@ function run_(a, p, tk) {
       role: 'parent', today: today(),
       teachers: [{ id: 't', name: t.name || '', cls: t.cls || '', limit: t.lim || 15 }],
       students: [{ id: 's', tid: 't', seat: st.seat, name: st.name, code: '' }], items: [],
-      records: all('SELECT id,type,label,note,date,ts FROM records WHERE sid=?', st.id).map(r => ({ ...r, sid: 's', tid: 't' })),
+      records: all('SELECT id,type,label,note,date,ts,subject FROM records WHERE sid=?', st.id).map(r => ({ ...r, sid: 's', tid: 't' })),
       periods: all('SELECT id,label,pstart AS start,pend AS "end" FROM periods WHERE tid=?', st.tid).map(x => ({ ...x, tid: 't' }))
     } };
   }
@@ -113,7 +129,8 @@ function write(a, p, s) {
       if (pwTaken(p.pw)) throw new Error('此密碼已被其他老師使用，請換一個');
       const name = text(p.name, 20), cls = String(p.cls || '').trim().slice(0, 20), id = uid(), salt = uid();
       run('INSERT INTO teachers VALUES(?,?,?,?,?,?,?)', id, name, cls, salt, hash(salt, p.pw), 15, p.pw);
-      DEFAULT_ITEMS.forEach(x => run('INSERT INTO items VALUES(?,?,?,?)', uid(), id, x[0], x[1]));
+      DEFAULT_ITEMS.forEach((x, i) => run('INSERT INTO items(id,tid,type,label,sort) VALUES(?,?,?,?,?)', uid(), id, x[0], x[1], i + 1));
+      copySubjects(id);
       return '已新增老師';
     }
     case 'resetPw': {
@@ -127,18 +144,14 @@ function write(a, p, s) {
     }
     case 'delTeacher': {
       adminOnly();
-      ['students', 'items', 'records', 'periods', 'sessions'].forEach(t => run('DELETE FROM ' + t + ' WHERE tid=?', String(p.id)));
+      ['students', 'items', 'records', 'periods', 'sessions', 'subjects'].forEach(t => run('DELETE FROM ' + t + ' WHERE tid=?', String(p.id)));
       run('DELETE FROM teachers WHERE id=?', String(p.id));
       return '已刪除';
     }
     case 'setPw': {
-      checkPw(p.pw); const salt = uid();
-      if (admin) { setCfg('adminSalt', salt); setCfg('admin', hash(salt, p.pw)); }
-      else {
-        if (pwTaken(p.pw, s.tid)) throw new Error('此密碼已被其他老師使用，請換一個');
-        run('UPDATE teachers SET salt=?,hash=?,pw=? WHERE id=?', salt, hash(salt, p.pw), p.pw, s.tid);
-      }
-      return '密碼已修改';
+      adminOnly(); checkPw(p.pw); const salt = uid();
+      setCfg('adminSalt', salt); setCfg('admin', hash(salt, p.pw));
+      return '管理者密碼已修改';
     }
     case 'setLimit': {
       needT(); const n = Math.round(Number(p.limit));
@@ -171,7 +184,7 @@ function write(a, p, s) {
     case 'delStudent': { mine('students', p.id); run('DELETE FROM records WHERE sid=?', p.id); run('DELETE FROM students WHERE id=?', p.id); return '已刪除學生'; }
     case 'addItem': {
       needT(); if (p.type !== 'good' && p.type !== 'bad') throw new Error('類型錯誤');
-      run('INSERT INTO items VALUES(?,?,?,?)', uid(), tid, p.type, text(p.label, 20)); return '已新增項目';
+      run('INSERT INTO items(id,tid,type,label,sort) VALUES(?,?,?,?,?)', uid(), tid, p.type, text(p.label, 20), nextSort('items', 'tid=? AND type=?', tid, p.type)); return '已新增項目';
     }
     case 'delItem': { mine('items', p.id); run('DELETE FROM items WHERE id=?', p.id); return '已刪除項目'; }
     case 'addRecords': {
@@ -179,15 +192,53 @@ function write(a, p, s) {
       if (!sids.length) throw new Error('請先選擇學生');
       const n = Math.max(1, Math.min(10, Math.round(Number(p.count)) || 1));
       const date = isDate(p.date) ? p.date : today(), note = String(p.note || '').trim().slice(0, 100);
+      const subject = String(p.subject || '').trim().slice(0, 12);
       let people = 0;
       sids.forEach(id => {
         const st = get('SELECT * FROM students WHERE id=?', String(id));
         if (!st || st.tid !== it.tid || (!admin && st.tid !== s.tid)) return;
         people++;
-        for (let k = 0; k < n; k++) run('INSERT INTO records VALUES(?,?,?,?,?,?,?,?)', uid(), st.id, st.tid, it.type, it.label, note, date, Date.now() + k);
+        for (let k = 0; k < n; k++) run('INSERT INTO records(id,sid,tid,type,label,note,date,ts,subject) VALUES(?,?,?,?,?,?,?,?,?)', uid(), st.id, st.tid, it.type, it.label, note, date, Date.now() + k, subject);
       });
       if (!people) throw new Error('找不到學生');
       return (it.type === 'good' ? '優點' : '缺點') + '已登記：' + people + ' 位學生' + (n > 1 ? '，每人 ' + n + ' 次' : '');
+    }
+    case 'updateItem': {
+      const it = mine('items', p.id), label = text(p.label, 20);
+      if (label !== it.label) {
+        run('UPDATE records SET label=? WHERE tid=? AND type=? AND label=?', label, it.tid, it.type, it.label);
+        run('UPDATE items SET label=? WHERE id=?', label, it.id);
+      }
+      return '已修改（過去的紀錄也一併更新）';
+    }
+    case 'moveItem': { const it = mine('items', p.id); move('items', 'tid=? AND type=?', [it.tid, it.type], it.id, p.dir); return ''; }
+    case 'addSubject': {
+      if (tid == null) throw new Error('找不到班級');
+      if (tid === '') adminOnly(); else needT();
+      run('INSERT INTO subjects(id,tid,label,sort) VALUES(?,?,?,?)', uid(), tid, text(p.label, 12), nextSort('subjects', 'tid=?', tid));
+      return '已新增課程';
+    }
+    case 'updateSubject': {
+      const r = mine('subjects', p.id), label = text(p.label, 12);
+      if (label !== r.label) {
+        if (r.tid !== '') run('UPDATE records SET subject=? WHERE tid=? AND subject=?', label, r.tid, r.label);
+        run('UPDATE subjects SET label=? WHERE id=?', label, r.id);
+      }
+      return '已修改課程名稱';
+    }
+    case 'moveSubject': { const r = mine('subjects', p.id); move('subjects', 'tid=?', [r.tid], r.id, p.dir); return ''; }
+    case 'delSubject': { mine('subjects', p.id); run('DELETE FROM subjects WHERE id=?', p.id); return '已刪除課程'; }
+    case 'applySubjects': {
+      adminOnly(); const ts = all('SELECT id FROM teachers'); ts.forEach(t => copySubjects(t.id));
+      return '已套用到全校 ' + ts.length + ' 個班級';
+    }
+    case 'updatePeriod': {
+      const pr = mine('periods', p.id), label = text(p.label, 20);
+      if (!isDate(p.start) || !isDate(p.end) || p.start > p.end) throw new Error('請輸入正確的起訖日期');
+      const hit = get('SELECT label FROM periods WHERE tid=? AND id<>? AND ?<=pend AND ?>=pstart', pr.tid, pr.id, p.start, p.end);
+      if (hit) throw new Error('與「' + hit.label + '」的日期重疊');
+      run('UPDATE periods SET label=?,pstart=?,pend=? WHERE id=?', label, p.start, p.end, pr.id);
+      return '已更新週期';
     }
     case 'delRecord': { mine('records', p.id); run('DELETE FROM records WHERE id=?', p.id); return '已刪除紀錄'; }
   }

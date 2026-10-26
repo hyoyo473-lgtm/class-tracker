@@ -27,8 +27,8 @@ try {
   load('Config').forEach(r => ins('INSERT OR REPLACE INTO config VALUES(?,?)', r.key, r.value));
   load('Teachers').forEach(r => ins('INSERT OR REPLACE INTO teachers VALUES(?,?,?,?,?,?,?)', r.id, r.name, r.cls, r.salt, r.hash, Number(r.limit) || 15, r.pw || ''));
   load('Students').forEach(r => ins('INSERT OR REPLACE INTO students VALUES(?,?,?,?,?)', r.id, r.tid, Number(r.seat), r.name, r.code));
-  load('Items').forEach(r => ins('INSERT OR REPLACE INTO items VALUES(?,?,?,?)', r.id, r.tid, r.type, r.label));
-  load('Records').forEach(r => ins('INSERT OR REPLACE INTO records VALUES(?,?,?,?,?,?,?,?)', r.id, r.sid, r.tid, r.type, r.label, r.note, r.date, Number(r.ts)));
+  load('Items').forEach(r => ins('INSERT OR REPLACE INTO items(id,tid,type,label,sort) VALUES(?,?,?,?,?)', r.id, r.tid, r.type, r.label, Number(r.sort) || 0));
+  load('Records').forEach(r => ins('INSERT OR REPLACE INTO records(id,sid,tid,type,label,note,date,ts,subject) VALUES(?,?,?,?,?,?,?,?,?)', r.id, r.sid, r.tid, r.type, r.label, r.note, r.date, Number(r.ts), r.subject || ''));
   load('Periods').forEach(r => ins('INSERT OR REPLACE INTO periods VALUES(?,?,?,?,?)', r.id, r.tid, r.label, r.start, r.end));
   db.exec('COMMIT'); console.log('匯入完成');
 } catch (e) { db.exec('ROLLBACK'); console.error('匯入失敗：', e.message); process.exit(1); }
