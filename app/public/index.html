@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>班級常規登記系統</title>
+<style>
+:root{color-scheme:light;--bg:#eef2fb;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--pr:#2563eb;--pb:#e0e9ff;--good:#059669;--gb:#d1fae5;--bad:#dc2626;--bb:#fee2e2;--warn:#fff7e0;--dk:#111a33}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#e9eefb,#f6f8fd 60%);min-height:100vh;color:var(--tx);font:16px/1.5 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+body.busy::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;background:var(--pr);animation:b 1s infinite;z-index:20}
+@keyframes b{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+.w{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 8px}h3{margin:0;font-size:20px}
+.card{background:var(--card);border-radius:20px;padding:18px;margin:12px 0;box-shadow:0 4px 18px rgba(30,50,110,.08)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin:12px 0;border-bottom:1px solid var(--bd)}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 12px;color:var(--mu);font-weight:600}
+.tabs button.on{color:var(--pr);border-color:var(--pr)}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:10px;padding:8px 14px;white-space:nowrap}
+button.pr{background:var(--pr);color:#fff;border-color:var(--pr);font-weight:700}
+button.gr{background:var(--good);color:#fff;border-color:var(--good);font-weight:700}
+button.g{background:var(--gb);color:var(--good);border-color:var(--good)}
+button.b{background:var(--bb);color:var(--bad);border-color:var(--bad)}
+button.sm{padding:4px 10px;font-size:14px}button.big{width:100%;padding:12px;font-size:17px}
+button.pill{border-radius:99px;background:#eef2fb;font-size:13px;padding:4px 12px}
+input,select,textarea{font:inherit;color:var(--tx);background:#fff;border:1px solid #cfd6e4;border-radius:10px;padding:10px;width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>input,.row>select{flex:1;min-width:130px;width:auto}
+.mu{color:var(--mu);font-size:14px}.gap{margin-top:10px}.r{text-align:right}
+.g-t{color:var(--good)}.b-t{color:var(--bad)}.pr-t{color:var(--pr)}
+.badge{display:inline-block;border-radius:99px;padding:2px 10px;font-size:13px;font-weight:700;background:var(--pb);color:var(--pr)}
+.badge.ok{background:#eef2fb;color:#4b5563}.badge.er{background:var(--bb);color:var(--bad)}.badge.gn{background:var(--gb);color:var(--good)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g2r{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+@media(max-width:760px){.g2,.g2r{grid-template-columns:1fr}}
+/* login */
+.hero{text-align:center;margin:18px 0}.hero p{color:var(--mu);margin:4px 0}
+.lc{position:relative;padding:24px}.lc .badge{position:absolute;right:18px;top:18px}
+.ico{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:32px;margin-bottom:14px}
+.inp{position:relative}.inp button{position:absolute;right:6px;top:6px;border:0;background:none;padding:6px}
+.adm{background:linear-gradient(120deg,#0e1630,#1b2750);color:#fff;border-radius:20px;padding:22px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.adm .badge{background:#2c3a6e;color:#c7d2fe}.adm .mu{color:#aab4d6}
+.adm button{background:#ffffff14;color:#fff;border-color:#ffffff40}.adm input{max-width:260px}
+/* seats */
+.seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.seat{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 2px;background:#f8fafd;border:1px solid var(--bd);border-radius:12px;line-height:1.3}
+.seat b{font-size:18px}.seat span{font-size:13px;color:#4b5563}.seat em{font-style:normal;font-size:12px;font-weight:700}.seat i{font-style:normal}
+.seat.on{background:var(--pb);border:2px solid var(--pr)}.seat.over{background:var(--bb);border-color:var(--bad)}.seat.on.over{border-color:var(--pr)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#eef2fb;border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;padding:10px}.seg button.on{background:#fff;box-shadow:0 1px 4px #0002;font-weight:700}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:260px;overflow-y:auto;padding:2px}
+.item{text-align:left;white-space:normal;border-radius:12px;padding:10px;background:#f8fafd}
+.item.on.bad{background:var(--bb);border:2px solid var(--bad)}.item.on.good{background:var(--gb);border:2px solid var(--good)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}.tbl td,.tbl th{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+.sc{overflow-x:auto}
+code{background:#eef2fb;padding:2px 8px;border-radius:8px;letter-spacing:1px;font-weight:700;color:var(--pr)}
+.warn{background:var(--warn);border:1px solid #f59e0b;color:#92400e;border-radius:14px;padding:12px 14px;margin:10px 0;font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.stat{background:#fff;border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 14px rgba(30,50,110,.07)}
+.stat .ico{margin:0;width:48px;height:48px;font-size:24px}.stat b{font-size:26px;display:block;line-height:1.1}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+.g3 .card{margin:0;padding:12px}.g3 b{font-size:34px;display:block;line-height:1.2}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.tc{margin:0}.box{border:1.5px dashed #cdd5e6;border-radius:12px;padding:10px;margin:12px 0}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;background:#f6f8fd;border-radius:12px;padding:10px;margin:10px 0}.mini b{display:block;font-size:17px}
+.hd{background:linear-gradient(135deg,#0e1630,#1d2b55);color:#fff;border-radius:20px;padding:20px 22px}
+.hd .mu{color:#b8c3e6}.hd button{background:#ffffff1a;color:#fff;border-color:#ffffff40}
+.rec{display:flex;gap:12px;align-items:center;background:#f8fafd;border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin:8px 0}
+.rec .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none}
+.rec.bad .ic{background:var(--bb);color:var(--bad)}.rec.good .ic{background:var(--gb);color:var(--good)}
+.rec>div:nth-child(2){flex:1}
+.chip{display:inline-block;border-radius:99px;padding:4px 12px;margin:3px;font-size:14px;font-weight:600}
+.chip.bad{background:var(--bb);color:var(--bad)}.chip.good{background:var(--gb);color:var(--good)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--tx);color:#fff;padding:10px 18px;border-radius:24px;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center;z-index:30}
+#toast.on{opacity:1}#toast.er{background:var(--bad)}
+/* print */
+.slips{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.slip{border:1.5px dashed #888;border-radius:8px;padding:10px;break-inside:avoid;font-size:14px;background:#fff}
+.slip ul{margin:4px 0;padding-left:18px}.slip li{margin:1px 0}.slip small{color:#555}
+.pvh{font-size:18px;font-weight:800;margin:8px 0}
+@media print{
+ body{background:#fff}body *{visibility:hidden}
+ #pv,#pv *{visibility:visible}#pv{position:absolute;left:0;top:0;width:100%}
+ .noprint{display:none!important}
+ .slip{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="w" id="app">載入中…</div>
+<div id="toast"></div>
+<script>
+const S={st:null,token:null,b:null,role:null,tt:'reg',at:'ov',act:null,cf:null,per:'cur',flash:'',selIds:[],mode:'bad',item:null,
+ f:{count:'1',date:'',note:'',seatExpr:'',from:'',to:'',pcls:'all',fmt:'slip',only:false},adminOpen:false,showAdd:false,newpw:null,view:null,pf:'all',pcode:'',busy:false};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m,er){const t=$('toast');t.textContent=m;t.className='on'+(er?' er':'');clearTimeout(toast.h);toast.h=setTimeout(()=>t.className='',er?3500:1800)}
+function call(a,p){return fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a,p:p||{},t:S.token})}).then(r=>r.json()).catch(()=>({ok:false,error:'無法連線，請檢查網路後再試'}))}
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+async function act(a,p){
+  S.busy=true;document.body.classList.add('busy');const r=await call(a,p);S.busy=false;document.body.classList.remove('busy');
+  if(!r.ok){toast(r.error,true);if(/逾時/.test(r.error))A.out();return null}
+  const d=r.data;if(d.token){S.token=d.token;LS.set('ct_t',d.token)}if(d.b){S.b=d.b;S.role=d.b.role}
+  if(d.msg)toast(d.msg);return d}
+
+/* ---------- 計算 ---------- */
+const addDay=(d,n)=>{const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)};
+const inR=(d,r)=>d>=r.a&&d<=r.b;
+const mask=n=>{const c=[...n];return c.length>=3?c[0]+'◯'.repeat(c.length-2)+c[c.length-1]:c.length==2?c[0]+'◯':n};
+const clsOf=tid=>{const t=S.b.teachers.find(x=>x.id===tid)||{};return t.cls||t.name||''};
+function tinfo(tid){
+  const B=S.b,t=B.teachers.find(x=>x.id===tid)||{limit:15,name:''};
+  const ps=B.periods.filter(p=>p.tid===tid).sort((x,y)=>x.start<y.start?-1:1),td=B.today;
+  let win;const cur=ps.find(p=>td>=p.start&&td<=p.end);
+  if(cur)win={a:cur.start,b:cur.end,label:cur.label,cur:true};
+  else if(!ps.length)win={a:'0000-01-01',b:'9999-12-31',label:'全部期間'};
+  else{const le=ps.filter(p=>p.end<td).pop(),ns=ps.find(p=>p.start>td);
+    win={a:le?addDay(le.end,1):'0000-01-01',b:ns?addDay(ns.start,-1):'9999-12-31',label:'目前未分期'}}
+  return{t,ps,limit:t.limit||15,win}}
+const recsOf=s=>S.b.records.filter(r=>r.sid===s.id);
+function stat(s){
+  const i=tinfo(s.tid),rs=recsOf(s).filter(r=>inR(r.date,i.win));
+  const bad=rs.filter(r=>r.type==='bad').length;
+  return{good:rs.length-bad,bad,limit:i.limit,over:bad>=i.limit,win:i.win}}
+function pickRecs(s){
+  const i=tinfo(s.tid);let rs=recsOf(s);
+  if(S.per==='cur')rs=rs.filter(r=>inR(r.date,i.win));
+  else if(S.per!=='all'){const p=i.ps.find(x=>x.id===S.per);if(p)rs=rs.filter(r=>r.date>=p.start&&r.date<=p.end)}
+  return rs}
+const perSel=tid=>{const i=tinfo(tid);return `<select data-c="per"><option value="cur" ${S.per==='cur'?'selected':''}>${i.win.cur?'📌 [現行] ':''}${esc(i.win.label)}${i.win.a>'0000'?`（${i.win.a} ~ ${i.win.b>'9998'?'':i.win.b}）`:''}</option><option value="all" ${S.per==='all'?'selected':''}>全部紀錄</option>${i.ps.filter(p=>!(i.win.cur&&p.start===i.win.a)).map(p=>`<option value="${p.id}" ${S.per===p.id?'selected':''}>${esc(p.label)}（${p.start} ~ ${p.end}）</option>`).join('')}</select>`};
+function groups(rs){const m={};rs.forEach(r=>(m[r.label]=m[r.label]||[]).push(r.date.slice(5).replace('-','/')));return Object.entries(m).map(([l,d])=>({l,n:d.length,d:d.sort().join('、')}))}
+const rand=()=>{const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';return Array.from({length:8},()=>a[Math.floor(Math.random()*a.length)]).join('')};
+
+/* ---------- 動作 ---------- */
+const T=()=>S.role==='admin'?S.act:S.b.tid;
+const V=id=>$(id)?.value??'';
+const ent=()=>{S.per='cur';S.tt='reg';S.at='ov';S.act=null;S.selIds=[];S.item=null;S.flash='';render()};
+const A={
+ eye(e){const i=$(e.dataset.v);i.type=i.type==='password'?'text':'password'},
+ gen(e){const i=$(e.dataset.v);i.type='text';i.value=rand();S.f[e.dataset.v]=i.value},
+ async tlogin(){if(await act('login',{role:'teacher',pw:V('tpw')}))ent()},
+ async plogin(){const c=V('pcode').trim().toUpperCase().split('-').pop();if(await act('parent',{code:c})){S.pcode=V('pcode').trim().toUpperCase();LS.set('ct_p',S.pcode);ent()}},
+ async alogin(){if(await act('login',{role:'admin',pw:V('apw')}))ent()},
+ async asetup(){if(V('apw')!==V('apw2'))return toast('兩次密碼不一致',true);if(await act('setAdmin',{pw:V('apw')}))ent()},
+ aopen(){S.adminOpen=!S.adminOpen;render()},
+ async out(){LS.del('ct_t');LS.del('ct_p');S.token=null;S.b=null;S.role=null;S.act=null;S.adminOpen=false;const r=await call('status');if(r.ok)S.st=r.data;render()},
+ async refresh(){const r=await act('load');if(r)render()},
+ at(e){S.at=e.dataset.v;S.act=null;render()},
+ tt(e){S.tt=e.dataset.v;S.view=null;render()},
+ enter(e){S.act=e.dataset.v;S.tt=e.dataset.t||'reg';S.selIds=[];S.item=null;S.per='cur';S.flash='';S.view=null;render()},
+ back(){S.act=null;S.flash='';render()},
+ closeFlash(){S.flash='';render()},
+ seat(e){const id=e.dataset.v,i=S.selIds.indexOf(id);i<0?S.selIds.push(id):S.selIds.splice(i,1);render()},
+ selAll(){S.selIds=S.b.students.filter(s=>s.tid===T()).map(s=>s.id);render()},
+ selNone(){S.selIds=[];render()},
+ applyRange(){const seats=new Set();String(S.f.seatExpr).split(/[,，、\s]+/).filter(Boolean).forEach(t=>{const m=t.match(/^(\d+)(?:[-~－](\d+))?$/);if(!m)return;const a=+m[1],b=m[2]?+m[2]:a;for(let k=Math.min(a,b);k<=Math.max(a,b);k++)seats.add(k)});
+   S.selIds=S.b.students.filter(s=>s.tid===T()&&seats.has(s.seat)).map(s=>s.id);render()},
+ mode(e){S.mode=e.dataset.v;S.item=null;render()},
+ pick(e){S.item=e.dataset.v;render()},
+ async submit(){
+  if(!S.selIds.length)return toast('請先點選學生',true);if(!S.item)return toast('請先點選登記項目',true);
+  const ss=S.b.students.filter(s=>S.selIds.includes(s.id)),was=new Set(ss.filter(s=>stat(s).over).map(s=>s.id));
+  const r=await act('addRecords',{sids:S.selIds,itemId:S.item,note:S.f.note,date:S.f.date||S.b.today,count:S.f.count});
+  if(r){const nw=ss.filter(s=>stat(s).over&&!was.has(s.id));
+   if(nw.length)S.flash='🚨 達到缺點上限：'+nw.map(s=>`${s.seat}號${s.name}（${stat(s).bad}/${stat(s).limit}）`).join('、');
+   S.selIds=[];S.f.note='';render()}},
+ async addT(){const r=await act('addTeacher',{name:V('tn'),cls:V('tc'),pw:V('tpw2')});if(r){S.f.tpw2='';S.showAdd=false;render()}},
+ toggleAdd(){S.showAdd=!S.showAdd;render()},
+ async resetT(e){const id=e.dataset.v,pw=e.dataset.g?rand():V('rp'+id);if(await act('resetPw',{id,pw})){render()}},
+ async copy(e){try{await navigator.clipboard.writeText(e.dataset.v);toast('已複製')}catch(x){toast('請手動記下：'+e.dataset.v)}},
+ async delT(e){const id=e.dataset.v;if(S.cf!=='t'+id){S.cf='t'+id;return render()}S.cf=null;await act('delTeacher',{id});render()},
+ async myPw(){if(V('p1')!==V('p2'))return toast('兩次密碼不一致',true);if(await act('setPw',{pw:V('p1')})){$('p1').value=$('p2').value=''}},
+ async setLimit(){await act('setLimit',{tid:T(),limit:V('lim')});render()},
+ async addP(){const r=await act('addPeriod',{tid:T(),label:V('pl'),start:V('ps'),end:V('pe')});if(r)render()},
+ async delP(e){await act('delPeriod',{id:e.dataset.v});render()},
+ async addS(){const r=await act('addStudents',{tid:T(),text:V('sn')});if(r)render()},
+ async delS(e){const id=e.dataset.v;if(S.cf!=='s'+id){S.cf='s'+id;return render()}S.cf=null;await act('delStudent',{id});render()},
+ async addI(e){const r=await act('addItem',{tid:T(),type:e.dataset.v,label:V('in'+e.dataset.v)});if(r)render()},
+ async delI(e){await act('delItem',{id:e.dataset.v});render()},
+ async delR(e){await act('delRecord',{id:e.dataset.v});render()},
+ view(e){S.view=S.view===e.dataset.v?null:e.dataset.v;render()},
+ pf(e){S.pf=e.dataset.v;render()},
+ qrange(e){const i=tinfo(e.dataset.t),td=S.b.today;
+  if(e.dataset.v==='cur'){S.f.from=i.win.a>'0000'?i.win.a:td.slice(0,8)+'01';S.f.to=i.win.b<'9998'?i.win.b:td}
+  else if(e.dataset.v==='month'){S.f.from=td.slice(0,8)+'01';S.f.to=td}
+  else{S.f.from=addDay(td,-6);S.f.to=td}render()},
+ print(){window.print()},
+ csv(e){const{rows}=printData(e.dataset.v==='all'?S.b.teachers.map(t=>t.id):[e.dataset.v]);
+  const q=x=>'"'+String(x).replace(/"/g,'""')+'"';
+  const g=a=>groups(a).map(x=>`${x.l}×${x.n}`).join('；');
+  const t=['班級,座號,姓名,缺點次數,優點次數,缺點明細,優點明細'].concat(rows.map(r=>[q(r.cls),r.s.seat,q(r.s.name),r.bad.length,r.good.length,q(g(r.bad)),q(g(r.good))].join(','))).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv;charset=utf-8'}));
+  a.download=`常規紀錄_${S.f.from}_${S.f.to}.csv`;document.body.appendChild(a);a.click();a.remove()}
+};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a;if(!/^del[ST]$/.test(a))S.cf=null;A[a](el)});
+document.addEventListener('change',e=>{if(e.target.dataset.c==='per'){S.per=e.target.value;render()}if(e.target.dataset.c==='pcls'){S.f.pcls=e.target.value;render()}if(e.target.dataset.s&&/^(fmt|from|to)$/.test(e.target.dataset.s)){S.f[e.target.dataset.s]=e.target.value;render()}if(e.target.dataset.s==='only'){S.f.only=e.target.checked;render()}});
+document.addEventListener('input',e=>{const k=e.target.dataset.s;if(k&&e.target.type!=='checkbox')S.f[k]=e.target.value});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.enter)A[e.target.dataset.enter]()});
+setInterval(()=>{if(S.token&&S.role!=='parent'&&!S.busy&&!document.hidden&&!document.activeElement.matches('input,textarea,select')){call('load').then(r=>{if(r.ok&&r.data.b){S.b=r.data.b;if(!document.activeElement.matches('input,textarea,select'))render()}})}},60000);
+
+/* ---------- 共用畫面 ---------- */
+const recRows=(rs,del)=>rs.length?rs.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts).map(r=>`<div class="rec ${r.type}"><div class="ic">${r.type==='good'?'✓':'✕'}</div><div><b>${esc(r.label)}</b>${r.note?`<div class="mu">${esc(r.note)}</div>`:''}<div><span class="badge ${r.type==='good'?'gn':'er'}">${r.type==='good'?'優點 1 次':'缺點 1 次'}</span></div></div><div class="mu r">${r.date}${del?`<br><button class="sm" data-a="delR" data-v="${r.id}">刪除</button>`:''}</div></div>`).join(''):'<div class="mu" style="padding:14px;text-align:center">這個區間沒有紀錄 🎉</div>';
+const pwBox=t=>`<div class="card"><h2>🔒 修改${t}密碼</h2><div class="row"><input id="p1" type="password" placeholder="新密碼（至少 4 碼）"><input id="p2" type="password" placeholder="再輸入一次"><button class="pr" data-a="myPw">儲存</button></div></div>`;
+const flashBar=()=>S.flash?`<div class="warn"><span>${esc(S.flash)}</span><button class="sm" data-a="closeFlash">知道了</button></div>`:'';
+
+function loginView(){
+ const st=S.st;if(!st)return '<div class="card">無法連線，請重新整理。</div>';
+ return `<div class="hero"><h1>🏫 班級常規登記系統</h1><p>導師登記・家長查詢・校務管理</p></div>
+ <div class="g2">
+  <div class="card lc"><span class="badge">班級導師專區</span><div class="ico" style="background:#dbe7ff">🧑‍🏫</div><h3>導師工作台</h3>
+   <p class="mu" style="min-height:48px">密碼由管理員提供，忘記密碼請找管理員詢問。</p><hr style="border:0;border-top:1px solid var(--bd)">
+   <b style="font-size:14px">輸入班級導師專屬密碼：</b><div class="inp gap"><input id="tpw" type="password" placeholder="請輸入導師專屬密碼" data-enter="tlogin"><button data-a="eye" data-v="tpw">👁</button></div>
+   <div class="gap"><button class="pr big" data-a="tlogin">登入導師工作台 ➜</button></div></div>
+  <div class="card lc"><span class="badge gn">學生與家長專區</span><div class="ico" style="background:#c9f5df">👨‍👩‍👦</div><h3>學生 / 家長查詢</h3>
+   <p class="mu" style="min-height:48px">輸入聯絡簿通知條上的專屬代碼（例如：703-K8P2AJ）。忘記代碼請找導師詢問。</p><hr style="border:0;border-top:1px solid var(--bd)">
+   <b style="font-size:14px">輸入學生個人專屬代碼：</b><div class="row gap"><input id="pcode" placeholder="例：703-K8P2AJ" style="text-transform:uppercase" data-enter="plogin"><button class="gr" data-a="plogin">查詢 ➜</button></div></div>
+ </div>
+ <div class="adm"><div><span class="badge">行政管理者專區</span><h3 style="margin-top:6px">校務行政與系統管理者登入</h3><div class="mu">全校各班導師設定、學生名冊與代碼管理、警告名單總覽、列印下載。</div></div>
+  ${S.adminOpen?(st.hasAdmin?`<div class="row"><input id="apw" type="password" placeholder="管理者密碼" data-enter="alogin"><button data-a="alogin">登入</button></div>`
+  :`<div class="row"><b>首次使用，請設定管理者密碼</b><input id="apw" type="password" placeholder="密碼（至少 4 碼）"><input id="apw2" type="password" placeholder="再輸入一次" data-enter="asetup"><button data-a="asetup">設定並進入</button></div>`)
+  :`<button data-a="aopen">🔐 校務管理者登入</button>`}</div>`}
+
+/* 登記頁 */
+function regView(tid){
+ const B=S.b,ss=B.students.filter(s=>s.tid===tid),its=B.items.filter(i=>i.tid===tid&&i.type===S.mode);
+ const n=S.selIds.filter(id=>ss.some(s=>s.id===id)).length,it=its.find(x=>x.id===S.item),max=ss.length?ss[ss.length-1].seat:0;
+ return `<div class="g2r"><div class="card" style="margin:0"><div class="top"><h2>🪑 學生座號盤（1 ~ ${max} 號）</h2><b class="pr-t">已選取 ${n} 位同學</b></div>
+ <div class="row" style="margin:8px 0"><button class="pill" data-a="selAll">全選</button><button class="pill" data-a="selNone">清除選取</button><input data-s="seatExpr" value="${esc(S.f.seatExpr)}" placeholder="輸入座號多選（如 1, 3, 5-8）" data-enter="applyRange" style="padding:5px 10px;font-size:14px"><button class="pill" data-a="applyRange">套用</button></div>
+ <div class="mu" style="margin-bottom:8px">※ 數字旁標記為目前週期累積：<span class="b-t">-缺點</span> <span class="g-t">+優點</span></div>
+ <div class="seats">${ss.map(s=>{const x=stat(s);return `<button class="seat ${S.selIds.includes(s.id)?'on':''} ${x.over?'over':''}" data-a="seat" data-v="${s.id}"><b>${s.seat}</b><span>${esc(s.name)}</span><em><i class="b-t">-${x.bad}</i> <i class="g-t">+${x.good}</i>${x.over?' ⚠':''}</em></button>`}).join('')||'<div class="mu">請先到「學生名冊」新增學生</div>'}</div></div>
+ <div class="card" style="margin:0"><div class="top"><h2>✍️ 登記常規項目</h2><span class="mu">${esc(tinfo(tid).win.label)}・上限 ${tinfo(tid).limit} 次</span></div>
+ <div class="seg"><button class="${S.mode==='bad'?'on':''}" data-a="mode" data-v="bad">🔴 登記缺點</button><button class="${S.mode==='good'?'on':''}" data-a="mode" data-v="good">🟢 登記優點</button></div>
+ <div class="row gap"><div style="flex:2"><div class="mu">登記日期</div><input type="date" data-s="date" value="${S.f.date||B.today}"></div><div style="flex:1"><div class="mu">登記次數</div><input type="number" min="1" max="10" data-s="count" value="${esc(S.f.count)}"></div></div>
+ <div class="top gap"><b style="font-size:14px">點選常規項目</b><a class="pr-t" style="font-size:14px;cursor:pointer" data-a="tt" data-v="it">＋ 管理項目</a></div>
+ <div class="items gap">${its.map(x=>`<button class="item ${S.mode} ${S.item===x.id?'on':''}" data-a="pick" data-v="${x.id}">${esc(x.label)}</button>`).join('')||'<span class="mu">尚無項目，請到「常規項目自訂」新增</span>'}</div>
+ <div class="mu gap">詳細事由備註（選填，家長看得到）</div><input data-s="note" value="${esc(S.f.note)}" placeholder="例：數學習作第1單元缺交">
+ <div class="gap"><button class="${S.mode==='bad'?'pr':'gr'} big" data-a="submit">💾 送出登記${n&&it?`（${n} 位 × ${esc(it.label)}）`:''}</button></div></div></div>
+ <h2 style="margin-top:18px">最近登記</h2><div class="card">${recRows(B.records.filter(r=>r.tid===tid).sort((a,b)=>b.ts-a.ts).slice(0,6).map(r=>({...r,label:(ss.find(s=>s.id===r.sid)?.seat||'')+' 號 '+(ss.find(s=>s.id===r.sid)?.name||'')+'：'+r.label})),true)}</div>`}
+
+/* 全班總表 */
+function sumView(tid){
+ const ss=S.b.students.filter(s=>s.tid===tid),v=ss.find(s=>s.id===S.view);
+ return `<div class="mu">計算區間：${esc(tinfo(tid).win.label)}。點選「明細」查看個別學生的完整紀錄。</div><div class="card sc"><table class="tbl"><tr><th>座號</th><th>姓名</th><th>本期缺點</th><th>本期優點</th><th>距離門檻</th><th></th></tr>${ss.map(s=>{const x=stat(s);return `<tr><td>${s.seat}</td><td>${esc(s.name)}</td><td class="b-t"><b>${x.bad}</b></td><td class="g-t"><b>${x.good}</b></td><td>${x.over?'<span class="badge er">已達門檻</span>':'還有 '+(x.limit-x.bad)+' 次'}</td><td><button class="sm" data-a="view" data-v="${s.id}">${S.view===s.id?'收合':'明細'}</button></td></tr>`}).join('')}</table></div>`+
+ (v?`<div class="card"><div class="top"><h2>${v.seat} 號 ${esc(v.name)}　<code>${esc(clsOf(tid))}-${v.code}</code></h2>${perSel(tid)}</div>${recRows(pickRecs(v),true)}</div>`:'')}
+
+/* 警告名單 */
+function warnView(tid){
+ const ss=S.b.students.filter(s=>s.tid===tid).map(s=>({s,x:stat(s)})),lim=tinfo(tid).limit;
+ const over=ss.filter(o=>o.x.over).sort((a,b)=>b.x.bad-a.x.bad),near=ss.filter(o=>!o.x.over&&o.x.bad>=lim-3&&o.x.bad>0).sort((a,b)=>b.x.bad-a.x.bad);
+ const list=a=>a.map(o=>`<div class="rec bad"><div class="ic">${o.s.seat}</div><div><b>${esc(o.s.name)}</b><div class="mu">本期缺點 ${o.x.bad} / ${lim} 次</div></div><button class="sm" data-a="tt" data-v="sum">明細</button></div>`).join('');
+ return `<div class="card"><h2>🚨 已達缺點上限（${over.length} 位）</h2>${list(over)||'<div class="mu">目前沒有學生達到上限 👍</div>'}</div><div class="card"><h2>⚠️ 接近上限（差 3 次以內，${near.length} 位）</h2>${list(near)||'<div class="mu">沒有</div>'}</div>`}
+
+/* 學生名冊 */
+function stuView(tid){
+ const ss=S.b.students.filter(s=>s.tid===tid),c=clsOf(tid);
+ return `<div class="card"><h2>批次新增學生</h2><div class="mu">一行一位，格式「座號 姓名」，可直接從 Excel 貼上兩欄。座號相同會更新姓名（代碼不變）；沒寫座號會接在最後。</div><textarea id="sn" rows="5" class="gap" placeholder="1 王小明&#10;2 李小華&#10;3 陳大同"></textarea><div class="gap"><button class="pr" data-a="addS">新增</button></div></div>
+ <div class="card sc"><table class="tbl"><tr><th>座號</th><th>姓名</th><th>家長專屬代碼</th><th></th></tr>${ss.map(s=>`<tr><td>${s.seat}</td><td>${esc(s.name)}</td><td><code>${esc(c)}-${s.code}</code> <button class="sm" data-a="copy" data-v="${esc(c)}-${s.code}">複製</button></td><td><button class="sm b" data-a="delS" data-v="${s.id}">${S.cf==='s'+s.id?'確認刪除':'刪除'}</button></td></tr>`).join('')}</table></div>`}
+
+/* 項目 */
+function itemView(tid){
+ return `<div class="g2">`+['bad','good'].map(t=>`<div class="card"><b class="${t==='good'?'g-t':'b-t'}">${t==='good'?'🟢 優點項目':'🔴 缺點項目'}</b><div class="row gap">${S.b.items.filter(x=>x.tid===tid&&x.type===t).map(x=>`<button class="${t==='good'?'g':'b'} sm" data-a="delI" data-v="${x.id}">${esc(x.label)} ✕</button>`).join('')||'<span class="mu">尚無項目</span>'}</div><div class="row gap"><input id="in${t}" placeholder="新增項目名稱"><button class="sm" data-a="addI" data-v="${t}">新增</button></div></div>`).join('')+`</div><div class="mu">點項目上的 ✕ 即可刪除（已登記的歷史紀錄不受影響）。</div>`}
+
+/* 設定 */
+function setView(tid){
+ const i=tinfo(tid),B=S.b;
+ return `<div class="g2"><div class="card"><h2>🚨 缺點警告門檻</h2><div class="mu">本期缺點達到此次數時，會在登記頁、警告名單、管理者總覽與家長頁顯示警示。</div><div class="row gap"><input id="lim" type="number" min="1" value="${i.limit}" style="max-width:120px"><span>次</span><button class="pr" data-a="setLimit">儲存</button></div></div>
+ ${S.role==='teacher'?pwBox('登入'):`<div class="card"><h2>🔑 重設此班導師密碼</h2><div class="row"><input id="rp${tid}" placeholder="新密碼" type="text"><button class="pr" data-a="resetT" data-v="${tid}">重設</button><button data-a="resetT" data-v="${tid}" data-g="1">🎲 隨機產生</button></div><div class="gap">目前密碼：${B.teachers.find(t=>t.id===tid)?.pw?`<code>${esc(B.teachers.find(t=>t.id===tid).pw)}</code>`:'<span class="mu">尚未記錄</span>'}</div></div>`}</div>
+ <div class="card"><h2>📅 段考／缺點歸零週期</h2><div class="mu">缺點只計算「今天所在的週期」內的紀錄，進入下一個週期就自動從 0 重新計算（舊紀錄保留，可在總表明細切換查看）。每次段考設一個週期，或整學期設一個週期都可以。</div>
+ ${i.ps.map(p=>`<div class="rec"><div style="flex:1"><b>${esc(p.label)}</b> <span class="mu">${p.start} ~ ${p.end}</span> ${B.today>=p.start&&B.today<=p.end?'<span class="badge">進行中</span>':''}</div><button class="sm" data-a="delP" data-v="${p.id}">刪除</button></div>`).join('')||'<div class="mu gap">尚未設定（目前計算全部紀錄）</div>'}
+ <div class="row gap"><input id="pl" placeholder="週期名稱（例：115-1 第1次段考）"><input id="ps" type="date"><input id="pe" type="date"><button class="pr" data-a="addP">新增週期</button></div></div>`}
+
+/* 列印 / 下載 */
+function printData(tids){
+ const B=S.b,{from,to}=S.f,rows=[];
+ tids.forEach(tid=>B.students.filter(s=>s.tid===tid).forEach(s=>{
+  const rs=recsOf(s).filter(r=>r.date>=from&&r.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+  const bad=rs.filter(r=>r.type==='bad'),good=rs.filter(r=>r.type==='good');
+  if(S.f.only&&!rs.length)return;rows.push({s,cls:clsOf(tid),bad,good,lim:tinfo(tid).limit})}));
+ return{rows}}
+function printHtml(tids){
+ const{rows}=printData(tids),{from,to,fmt}=S.f;
+ const li=(a,c)=>groups(a).map(x=>`<li><span class="${c}">${esc(x.l)} ×${x.n}</span> <small>(${x.d})</small></li>`).join('');
+ if(fmt==='tbl')return `<div class="pvh">常規登記總表　${from} ~ ${to}</div><table class="tbl"><tr><th>班級</th><th>座號</th><th>姓名</th><th>缺點</th><th>優點</th><th>缺點明細</th><th>優點明細</th></tr>${rows.map(r=>`<tr><td>${esc(r.cls)}</td><td>${r.s.seat}</td><td>${esc(r.s.name)}</td><td class="b-t"><b>${r.bad.length}</b></td><td class="g-t"><b>${r.good.length}</b></td><td>${groups(r.bad).map(x=>esc(x.l)+'×'+x.n).join('、')}</td><td>${groups(r.good).map(x=>esc(x.l)+'×'+x.n).join('、')}</td></tr>`).join('')}</table>`;
+ if(fmt==='codes')return `<div class="pvh">家長查詢代碼通知單</div><div class="slips">${rows.map(r=>`<div class="slip"><b>${esc(r.cls)}　${r.s.seat} 號 ${esc(r.s.name)}</b><div>專屬代碼：<b style="font-size:18px;letter-spacing:2px">${esc(r.cls)}-${r.s.code}</b></div><small>請至班級常規登記網站，輸入此代碼即可查看孩子的登記情形。</small></div>`).join('')}</div>`;
+ return `<div class="slips">${rows.map(r=>`<div class="slip"><div class="top"><b>${esc(r.cls)}　${r.s.seat} 號 ${esc(r.s.name)}</b>${r.bad.length>=r.lim?'<b class="b-t">⚠ 已達警告門檻</b>':''}</div><small>常規紀錄 ${from} ~ ${to}</small><div><b class="b-t">缺點 ${r.bad.length} 次</b>　<b class="g-t">優點 ${r.good.length} 次</b></div>${r.bad.length?`<ul>${li(r.bad,'b-t')}</ul>`:''}${r.good.length?`<ul>${li(r.good,'g-t')}</ul>`:''}${!r.bad.length&&!r.good.length?'<div><small>此區間沒有登記紀錄</small></div>':''}<div style="margin-top:6px"><small>家長簽名：＿＿＿＿＿＿＿＿</small></div></div>`).join('')}</div>`}
+function printView(tid){
+ const B=S.b,td=B.today,f=S.f;
+ if(!f.from||!f.to){const w=tinfo(tid==='all'?B.teachers[0]?.id:tid).win;f.from=w.a>'0000'?w.a:td.slice(0,8)+'01';f.to=w.b<'9998'?w.b:td}
+ const tids=tid==='all'?B.teachers.map(t=>t.id):[tid],qt=tid==='all'?B.teachers[0]?.id:tid;
+ return `<div class="card noprint"><h2>🖨️ 列印／下載登記情況</h2>
+ <div class="row"><div><div class="mu">起始日期</div><input type="date" data-s="from" value="${f.from}"></div><div><div class="mu">結束日期</div><input type="date" data-s="to" value="${f.to}"></div>
+ <button class="pill" data-a="qrange" data-v="cur" data-t="${qt}">本期週期</button><button class="pill" data-a="qrange" data-v="month" data-t="${qt}">本月</button><button class="pill" data-a="qrange" data-v="week" data-t="${qt}">近 7 天</button></div>
+ <div class="row gap"><select data-s="fmt" style="max-width:280px"><option value="slip" ${f.fmt==='slip'?'selected':''}>個人通知單（可剪下貼聯絡簿）</option><option value="tbl" ${f.fmt==='tbl'?'selected':''}>全班登記總表</option><option value="codes" ${f.fmt==='codes'?'selected':''}>家長代碼通知單</option></select>
+ <label><input type="checkbox" data-s="only" ${f.only?'checked':''} style="width:auto"> 只列出有紀錄的學生</label></div>
+ <div class="row gap"><button class="pr" data-a="print">🖨️ 列印</button><button data-a="csv" data-v="${tid}">⬇️ 下載 Excel(CSV)</button><span class="mu">若無法列印，可在列印視窗選擇「另存為 PDF」。</span></div></div>
+ <div id="pv" class="card">${printHtml(tids)}</div>`}
+
+function classView(tid){
+ const lim=tinfo(tid).limit;
+ const tabs=[['reg','📝 快速登記常規'],['sum','📊 全班常規總表'],['warn',`🚨 警告名單 (${lim}次)`],['stu','👥 學生名冊與代碼'],['it','⚙️ 常規項目自訂'],['set','📅 週期與設定'],['prt','🖨️ 列印下載']].map(([v,n])=>`<button class="${S.tt===v?'on':''}" data-a="tt" data-v="${v}">${n}</button>`).join('');
+ const body={reg:regView,sum:sumView,warn:warnView,stu:stuView,it:itemView,set:setView,prt:printView}[S.tt](tid);
+ return `${flashBar()}<div class="tabs noprint">${tabs}</div>${body}`}
+
+function adminView(){
+ const B=S.b;
+ if(S.act)return `<div class="top noprint"><button data-a="back">← 回管理者總覽</button><b>${esc(clsOf(S.act))}　導師：${esc(B.teachers.find(t=>t.id===S.act)?.name||'')}</b><button class="sm" data-a="refresh">🔄</button></div>`+classView(S.act);
+ const all=B.students.map(s=>({s,x:stat(s)})),over=all.filter(o=>o.x.over);
+ const tabs=[['ov','🏫 班級與老師總覽'],['wn',`🚨 全校警告名單 (${over.length})`],['pr','🖨️ 列印下載'],['pw','🔒 管理者密碼']].map(([v,n])=>`<button class="${S.at===v?'on':''}" data-a="at" data-v="${v}">${n}</button>`).join('');
+ const stats=`<div class="g4 noprint">${[['🏫','#e8f0ff',B.teachers.length,'全校班級總數'],['👥','#d9f7e8',B.students.length,'全校學生總數'],['🚨','#ffe3e3',over.length,'達警告門檻學生'],['📝','#fbe8ff',B.records.length,'累積登記流水帳']].map(([i,c,n,l])=>`<div class="stat"><div class="ico" style="background:${c}">${i}</div><div><b>${n}</b><span class="mu">${l}</span></div></div>`).join('')}</div>`;
+ let b='';
+ if(S.at==='ov'){
+  b=`<div class="top gap"><div><h2 style="margin:0">班級與導師管理</h2><div class="mu">每 60 秒自動更新。可代管進入任一老師的工作台、重設密碼與警告門檻。</div></div><div class="row"><button class="sm" data-a="refresh">🔄 立即更新</button><button class="pr" data-a="toggleAdd">＋ 新增老師與班級</button></div></div>`+
+  (S.showAdd?`<div class="card"><div class="row"><input id="tn" placeholder="導師姓名"><input id="tc" placeholder="班級（例：703）"><input id="tpw2" data-s="tpw2" type="text" value="${esc(S.f.tpw2||'')}" placeholder="設定登入密碼"><button data-a="gen" data-v="tpw2">🎲 隨機</button><button class="pr" data-a="addT">新增</button></div></div>`:'')+
+  `<div class="tgrid gap">${B.teachers.map(t=>{const i=tinfo(t.id),ss=B.students.filter(s=>s.tid===t.id),ov=ss.filter(s=>stat(s).over).length,n=B.records.filter(r=>r.tid===t.id&&inR(r.date,i.win)).length;
+   return `<div class="card tc"><div class="top"><h3>${esc(t.cls||t.name)}</h3><span class="badge ${ov?'er':'ok'}">${ov?'🚨 '+ov+' 位達門檻':'常規正常'}</span></div><div><b>導師：${esc(t.name)}</b></div>
+   <div class="box"><div class="top"><span>🔑 導師專屬密碼：</span>${t.pw?`<span><code>${esc(t.pw)}</code> <button class="sm" data-a="copy" data-v="${esc(t.pw)}">複製</button></span>`:'<span class="mu">尚未記錄，請重設一次</span>'}</div>
+   <div class="row gap"><input id="rp${t.id}" placeholder="輸入新密碼" style="padding:6px 8px"><button class="sm" data-a="resetT" data-v="${t.id}">重設</button><button class="sm" data-a="resetT" data-v="${t.id}" data-g="1">🎲 隨機</button></div>
+   <div class="gap"><span>🚨 自訂警告門檻：</span><b class="b-t">${i.limit} 次缺點</b></div></div>
+   <div class="mini"><div class="mu">學生人數<b>${ss.length}</b></div><div class="mu">目前週期<b style="font-size:13px;color:var(--pr)">${esc(i.win.label)}</b></div><div class="mu">本期登記<b>${n}</b></div></div>
+   <div class="row"><button class="pr" data-a="enter" data-v="${t.id}">🧑‍🏫 進入工作台代管</button><button class="sm" data-a="enter" data-v="${t.id}" data-t="set">⚙️ 設定</button><button class="sm" data-a="enter" data-v="${t.id}" data-t="stu">👥 名冊</button><button class="sm b" data-a="delT" data-v="${t.id}">${S.cf==='t'+t.id?'確認刪除？':'🗑'}</button></div></div>`}).join('')||'<div class="card mu">尚未建立任何老師，請按右上角「新增老師與班級」。</div>'}</div>`;
+ }else if(S.at==='wn'){
+  b=`<div class="card sc"><h2>全校已達缺點門檻的學生</h2><table class="tbl"><tr><th>班級</th><th>座號</th><th>姓名</th><th>本期缺點</th><th></th></tr>${over.sort((a,c)=>c.x.bad-a.x.bad).map(o=>`<tr><td>${esc(clsOf(o.s.tid))}</td><td>${o.s.seat}</td><td>${esc(o.s.name)}</td><td class="b-t"><b>${o.x.bad} / ${o.x.limit}</b></td><td><button class="sm" data-a="enter" data-v="${o.s.tid}" data-t="sum">查看班級</button></td></tr>`).join('')||'<tr><td colspan="5" class="mu">目前沒有學生達到門檻 👍</td></tr>'}</table></div>`;
+ }else if(S.at==='pr'){
+  b=`<div class="card noprint"><div class="row"><b>列印範圍：</b><select data-c="pcls" style="max-width:240px"><option value="all">全校所有班級</option>${B.teachers.map(t=>`<option value="${t.id}" ${S.f.pcls===t.id?'selected':''}>${esc(t.cls||t.name)}（${esc(t.name)}）</option>`).join('')}</select></div></div>`+printView(S.f.pcls==='all'||!B.teachers.some(t=>t.id===S.f.pcls)?'all':S.f.pcls);
+ }else b=pwBox('管理者');
+ return `<div class="top noprint"><h1>🏫 校務行政管理者</h1><button class="sm" data-a="out">登出</button></div><div class="gap">${stats}</div><div class="tabs noprint">${tabs}</div>${b}`}
+
+function teacherView(){
+ const t=S.b.teachers[0]||{};
+ return `<div class="top noprint"><div><h1>🧑‍🏫 導師工作台</h1><span class="mu">${esc(t.cls||'')} ${esc(t.name||'')}</span></div><div class="row"><button class="sm" data-a="refresh">🔄</button><button class="sm" data-a="out">登出</button></div></div>`+classView(S.b.tid)}
+
+function parentView(){
+ const B=S.b,s=B.students[0],x=stat(s),t=B.teachers[0],i=tinfo('t');
+ let rs=pickRecs(s);const bad=rs.filter(r=>r.type==='bad'),good=rs.filter(r=>r.type==='good');
+ const shown=S.pf==='bad'?bad:S.pf==='good'?good:rs;
+ return `<div class="hd"><div class="top"><div><div class="mu">${esc(t.cls)}　導師 ${esc(t.name)}</div><h1 style="font-size:28px;margin:6px 0">座號 ${s.seat} 號 同學</h1><div class="mu">專屬查詢代碼：<b>${esc(S.pcode)}</b>｜學生姓名：${esc(mask(s.name))}（個資安全保護）</div></div><button class="sm" data-a="out">登出查詢</button></div></div>
+ <div class="card"><div class="mu">目前檢視週期：</div><div class="row gap"><b style="font-size:18px">${esc(i.win.label)}</b>${i.win.cur?'<span class="badge">進行中</span>':''}</div>${perSel('t')}</div>
+ ${x.over?`<div class="warn">🚨 本期缺點已達 ${x.bad} 次，已達警告門檻 ${x.limit} 次，請多留意。</div>`:''}
+ <div class="g3"><div class="card"><div class="mu">本期缺點累積</div><b class="b-t">${x.bad}</b><span class="mu">次</span></div><div class="card"><div class="mu">本期優點表揚</div><b class="g-t">${x.good}</b><span class="mu">次</span></div><div class="card"><div class="mu">距離警告門檻</div><b style="color:#d97706">${x.over?0:x.limit-x.bad}</b><span class="mu">次</span></div></div>
+ <div class="card"><h2>📌 項目統計</h2>${groups(bad).map(g=>`<span class="chip bad">${esc(g.l)} ×${g.n}</span>`).join('')}${groups(good).map(g=>`<span class="chip good">${esc(g.l)} ×${g.n}</span>`).join('')||''}${!rs.length?'<span class="mu">這個區間沒有任何紀錄 🎉</span>':''}</div>
+ <div class="card"><div class="top"><h2>📋 登記詳細明細（共 ${shown.length} 筆）</h2><div class="row"><button class="sm ${S.pf==='all'?'pr':''}" data-a="pf" data-v="all">全部</button><button class="sm ${S.pf==='bad'?'b':''}" data-a="pf" data-v="bad">只看缺點</button><button class="sm ${S.pf==='good'?'g':''}" data-a="pf" data-v="good">只看優點</button></div></div>${recRows(shown,false)}</div>`}
+
+function render(){
+ $('app').innerHTML=!S.role?loginView():S.role==='admin'?adminView():S.role==='teacher'?teacherView():parentView()}
+(async function boot(){
+ const r=await call('status');if(!r.ok){$('app').textContent='無法連線：'+r.error;return}S.st=r.data;
+ const t=LS.get('ct_t');
+ if(t){S.token=t;const x=await call('load');if(x.ok&&x.data.b){S.b=x.data.b;S.role=x.data.b.role;ent();return}S.token=null;LS.del('ct_t')}
+ const pc=LS.get('ct_p');
+ if(pc){const x=await call('parent',{code:pc});if(x.ok){S.b=x.data.b;S.role='parent';S.pcode=pc;ent();return}LS.del('ct_p')}
+ render()})();
+</script>
+</body>
+</html>

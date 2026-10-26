@@ -1,0 +1,21 @@
+'use strict';
+const { DatabaseSync } = require('node:sqlite');
+const fs = require('fs');
+const path = require('path');
+const dir = process.env.DATA_DIR || path.join(__dirname, 'data');
+fs.mkdirSync(dir, { recursive: true });
+const db = new DatabaseSync(path.join(dir, 'class.db'));
+db.exec(`
+PRAGMA journal_mode=WAL;
+CREATE TABLE IF NOT EXISTS config(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS teachers(id TEXT PRIMARY KEY, name TEXT, cls TEXT, salt TEXT, hash TEXT, lim INTEGER DEFAULT 15, pw TEXT);
+CREATE TABLE IF NOT EXISTS students(id TEXT PRIMARY KEY, tid TEXT, seat INTEGER, name TEXT, code TEXT UNIQUE);
+CREATE TABLE IF NOT EXISTS items(id TEXT PRIMARY KEY, tid TEXT, type TEXT, label TEXT);
+CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY, sid TEXT, tid TEXT, type TEXT, label TEXT, note TEXT, date TEXT, ts INTEGER);
+CREATE TABLE IF NOT EXISTS periods(id TEXT PRIMARY KEY, tid TEXT, label TEXT, pstart TEXT, pend TEXT);
+CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, role TEXT, tid TEXT, exp INTEGER);
+CREATE INDEX IF NOT EXISTS i_st ON students(tid);
+CREATE INDEX IF NOT EXISTS i_rs ON records(sid);
+CREATE INDEX IF NOT EXISTS i_rt ON records(tid);
+`);
+module.exports = db;
