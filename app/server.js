@@ -72,6 +72,7 @@ function bundle(s) {
     items: all('SELECT id,tid,type,label FROM items' + w + ' ORDER BY sort,rowid', ...a),
     subjects: all('SELECT id,tid,label FROM subjects' + (admin ? '' : ' WHERE tid=?') + ' ORDER BY sort,rowid', ...a),
     records: all('SELECT id,sid,tid,type,label,note,date,ts,subject FROM records' + w, ...a),
+    warnings: all('SELECT id,sid,tid,pk,pl,bad,date,ts FROM warnings' + w, ...a),
     periods: all('SELECT id,tid,label,pstart AS start,pend AS "end" FROM periods' + w, ...a)
   };
 }
@@ -104,7 +105,7 @@ function run_(a, p, tk) {
     return { b: {
       role: 'parent', today: today(),
       teachers: [{ id: 't', name: t.name || '', cls: t.cls || '', limit: t.lim || 15 }],
-      students: [{ id: 's', tid: 't', seat: st.seat, name: st.name, code: '' }], items: [],
+      students: [{ id: 's', tid: 't', seat: st.seat, name: st.name, code: '' }], items: [], warnings: [],
       records: all('SELECT id,type,label,note,date,ts,subject FROM records WHERE sid=?', st.id).map(r => ({ ...r, sid: 's', tid: 't' })),
       periods: all('SELECT id,label,pstart AS start,pend AS "end" FROM periods WHERE tid=?', st.tid).map(x => ({ ...x, tid: 't' }))
     } };
@@ -144,7 +145,7 @@ function write(a, p, s) {
     }
     case 'delTeacher': {
       adminOnly();
-      ['students', 'items', 'records', 'periods', 'sessions', 'subjects'].forEach(t => run('DELETE FROM ' + t + ' WHERE tid=?', String(p.id)));
+      ['students', 'items', 'records', 'periods', 'sessions', 'subjects', 'warnings'].forEach(t => run('DELETE FROM ' + t + ' WHERE tid=?', String(p.id)));
       run('DELETE FROM teachers WHERE id=?', String(p.id));
       return '已刪除';
     }
@@ -181,7 +182,7 @@ function write(a, p, s) {
       });
       return '新增 ' + added + ' 位，更新 ' + upd + ' 位';
     }
-    case 'delStudent': { mine('students', p.id); run('DELETE FROM records WHERE sid=?', p.id); run('DELETE FROM students WHERE id=?', p.id); return '已刪除學生'; }
+    case 'delStudent': { mine('students', p.id); run('DELETE FROM records WHERE sid=?', p.id); run('DELETE FROM warnings WHERE sid=?', p.id); run('DELETE FROM students WHERE id=?', p.id); return '已刪除學生'; }
     case 'addItem': {
       needT(); if (p.type !== 'good' && p.type !== 'bad') throw new Error('類型錯誤');
       run('INSERT INTO items(id,tid,type,label,sort) VALUES(?,?,?,?,?)', uid(), tid, p.type, text(p.label, 20), nextSort('items', 'tid=? AND type=?', tid, p.type)); return '已新增項目';
@@ -232,6 +233,14 @@ function write(a, p, s) {
       adminOnly(); const ts = all('SELECT id FROM teachers'); ts.forEach(t => copySubjects(t.id));
       return '已套用到全校 ' + ts.length + ' 個班級';
     }
+    case 'addWarning': {
+      const st = mine('students', p.sid), pk = String(p.pk || '').slice(0, 20), pl = String(p.pl || '').slice(0, 30), bad = Math.max(0, Math.round(Number(p.bad)) || 0);
+      if (!pk) throw new Error('缺少區間資料');
+      run('DELETE FROM warnings WHERE sid=? AND pk=?', st.id, pk);
+      run('INSERT INTO warnings VALUES(?,?,?,?,?,?,?,?)', uid(), st.id, st.tid, pk, pl, bad, today(), Date.now());
+      return '已完成警告登記：' + st.name;
+    }
+    case 'delWarning': { mine('warnings', p.id); run('DELETE FROM warnings WHERE id=?', p.id); return '已撤銷警告登記'; }
     case 'updatePeriod': {
       const pr = mine('periods', p.id), label = text(p.label, 20);
       if (!isDate(p.start) || !isDate(p.end) || p.start > p.end) throw new Error('請輸入正確的起訖日期');

@@ -71,6 +71,18 @@ code{background:#eef2fb;padding:2px 8px;border-radius:8px;letter-spacing:1px;fon
 .rec>div:nth-child(2){flex:1}
 .chip{display:inline-block;border-radius:99px;padding:4px 12px;margin:3px;font-size:14px;font-weight:600}
 .chip.bad{background:var(--bb);color:var(--bad)}.chip.good{background:var(--gb);color:var(--good)}
+/* 警告通知單 / 日曆 */
+.pvonly{display:none}
+.notice{border:2px solid #333;border-radius:10px;padding:16px 18px;margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;background:#fff;color:#000;font-size:14px;line-height:1.6}
+.notice .nh{font-size:20px;font-weight:800;text-align:center;margin-bottom:6px}
+.notice table{width:100%;border-collapse:collapse;margin:8px 0}.notice th,.notice td{border:1px solid #888;padding:3px 6px;text-align:left;font-size:13px}
+.notice .sg{display:flex;justify-content:space-between;margin-top:14px;border-top:1.5px dashed #666;padding-top:10px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .wd{font-size:12px;color:var(--mu);font-weight:700;padding:2px 0}
+.cal .d{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:14px;background:#f8fafd;padding:0;border:1px solid transparent;position:relative}
+.cal .d.e{background:none}.cal .d.t{border-color:var(--pr)}
+.cal .d.b1{background:#fecaca;color:#7f1d1d;font-weight:700}.cal .d.b2{background:#f87171;color:#fff;font-weight:700}.cal .d.b3{background:#dc2626;color:#fff;font-weight:700}
+.cal .d.sel{outline:3px solid #111}.cal .d small{font-size:11px;line-height:1}
 button.pill.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 .bar{height:12px;background:#e8ecf5;border-radius:99px;overflow:hidden;min-width:90px}
 .bar i{display:block;height:100%;border-radius:99px;transition:width .3s}
@@ -87,6 +99,7 @@ button.pill.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 .slip ul{margin:4px 0;padding-left:18px}.slip li{margin:1px 0}.slip small{color:#555}
 .pvh{font-size:18px;font-weight:800;margin:8px 0}
 @media print{
+ .pvonly{display:block}
  body{background:#fff}body *{visibility:hidden}
  #pv,#pv *{visibility:visible}#pv{position:absolute;left:0;top:0;width:100%}
  .noprint{display:none!important}
@@ -99,7 +112,7 @@ button.pill.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 <div id="toast"></div>
 <script>
 const S={st:null,token:null,b:null,role:null,tt:'reg',at:'ov',act:null,cf:null,per:'cur',flash:'',selIds:[],mode:'bad',item:null,
- f:{count:'1',date:'',note:'',seatExpr:'',from:'',to:'',pcls:'all',fmt:'slip',only:false},adminOpen:false,showAdd:false,newpw:null,view:null,pf:'all',pcode:'',busy:false,subj:'',sper:'cur',edit:null};
+ f:{count:'1',date:'',note:'',seatExpr:'',from:'',to:'',pcls:'all',fmt:'slip',only:false},adminOpen:false,showAdd:false,newpw:null,view:null,pf:'all',pcode:'',busy:false,subj:'',sper:'cur',edit:null,pw:[],cal:'',calDay:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(m,er){const t=$('toast');t.textContent=m;t.className='on'+(er?' er':'');clearTimeout(toast.h);toast.h=setTimeout(()=>t.className='',er?3500:1800)}
@@ -137,7 +150,7 @@ function winOf(tid,sp){
   return i.win}
 function statP(s,sp){
   const w=winOf(s.tid,sp),rs=recsOf(s).filter(r=>inR(r.date,w)),bad=rs.filter(r=>r.type==='bad').length,lim=tinfo(s.tid).limit;
-  return{good:rs.length-bad,bad,limit:lim,over:bad>=lim,w,rs}}
+  return{good:rs.length-bad,bad,limit:lim,over:!w.all&&bad>=lim,w,rs}}
 const barHtml=(bad,lim)=>{const r=bad/lim,l=r>=1?3:r>=.8?2:r>=.5?1:0;return `<div class="bar l${l}" title="${bad} / ${lim}"><i style="width:${Math.min(100,Math.round(r*100))}%"></i></div>`};
 function pickRecs(s){
   const i=tinfo(s.tid);let rs=recsOf(s);
@@ -151,7 +164,7 @@ const rand=()=>{const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';return Array.from({len
 /* ---------- 動作 ---------- */
 const T=()=>S.role==='admin'?S.act:S.b.tid;
 const V=id=>$(id)?.value??'';
-const ent=()=>{S.subj='';S.sper='cur';S.edit=null;S.per='cur';S.tt='reg';S.at='ov';S.act=null;S.selIds=[];S.item=null;S.flash='';render()};
+const ent=()=>{S.pw=[];S.calDay=null;S.cal=(S.b&&S.b.today||'').slice(0,7);S.subj='';S.sper='cur';S.edit=null;S.per='cur';S.tt='reg';S.at='ov';S.act=null;S.selIds=[];S.item=null;S.flash='';render()};
 const A={
  eye(e){const i=$(e.dataset.v);i.type=i.type==='password'?'text':'password'},
  gen(e){const i=$(e.dataset.v);i.type='text';i.value=rand();S.f[e.dataset.v]=i.value},
@@ -176,10 +189,10 @@ const A={
  pick(e){S.item=e.dataset.v;render()},
  async submit(){
   if(!S.selIds.length)return toast('請先點選學生',true);if(!S.item)return toast('請先點選登記項目',true);
-  const ss=S.b.students.filter(s=>S.selIds.includes(s.id)),was=new Set(ss.filter(s=>stat(s).over).map(s=>s.id));
+  const ss=S.b.students.filter(s=>S.selIds.includes(s.id)),was=new Set(ss.filter(s=>statP(s,S.sper).over).map(s=>s.id));
   const r=await act('addRecords',{sids:S.selIds,itemId:S.item,note:S.f.note,date:S.f.date||S.b.today,count:S.f.count,subject:S.subj});
-  if(r){const nw=ss.filter(s=>stat(s).over&&!was.has(s.id));
-   if(nw.length)S.flash='🚨 達到缺點上限：'+nw.map(s=>`${s.seat}號${s.name}（${stat(s).bad}/${stat(s).limit}）`).join('、');
+  if(r){const nw=ss.filter(s=>statP(s,S.sper).over&&!was.has(s.id));
+   if(nw.length)S.flash='🚨 達到缺點上限：'+nw.map(s=>`${s.seat}號${s.name}（${statP(s,S.sper).bad}/${statP(s,S.sper).limit}）`).join('、');
    S.selIds=[];S.f.note='';render()}},
  async addT(){const r=await act('addTeacher',{name:V('tn'),cls:V('tc'),pw:V('tpw2')});if(r){S.f.tpw2='';S.showAdd=false;render()}},
  toggleAdd(){S.showAdd=!S.showAdd;render()},
@@ -205,6 +218,18 @@ const A={
  async delSj(e){await act('delSubject',{id:e.dataset.v});render()},
  async applySj(){if(S.cf!=='ap'){S.cf='ap';return render()}S.cf=null;await act('applySubjects',{});render()},
  async saveP(e){if(await act('updatePeriod',{id:e.dataset.v,label:V('el'),start:V('es'),end:V('ee')})){S.edit=null;render()}},
+ async wreg(sid){const s=S.b.students.find(x=>x.id===sid),w=winOf(s.tid,S.sper),x=statP(s,S.sper);return act('addWarning',{sid,pk:w.a,pl:w.label,bad:x.bad})},
+ async wprint(e){const tid=T(),v=e.dataset.v,w=winOf(tid,S.sper),B=S.b;
+  const ids=v==='all'?B.students.filter(s=>s.tid===tid&&statP(s,S.sper).over&&!B.warnings.some(k=>k.sid===s.id&&k.pk===w.a)).map(s=>s.id):[v];
+  if(!ids.length)return toast('沒有尚未通知的學生',true);
+  for(const id of ids){if(!await A.wreg(id))return}
+  S.pw=ids;render();setTimeout(()=>window.print(),150)},
+ async wreprint(e){S.pw=[e.dataset.v];render();setTimeout(()=>window.print(),150)},
+ async wmark(e){await A.wreg(e.dataset.v);render()},
+ async wundo(e){await act('delWarning',{id:e.dataset.v});render()},
+ cal(e){const[y,m]=S.cal.split('-').map(Number),d=new Date(Date.UTC(y,m-1+Number(e.dataset.d),1));S.cal=d.toISOString().slice(0,7);S.calDay=null;render()},
+ calnow(){S.cal=S.b.today.slice(0,7);S.calDay=null;render()},
+ calday(e){S.calDay=S.calDay===e.dataset.v?null:e.dataset.v;render()},
  view(e){S.view=S.view===e.dataset.v?null:e.dataset.v;render()},
  pf(e){S.pf=e.dataset.v;render()},
  qrange(e){const i=tinfo(e.dataset.t),td=S.b.today;
@@ -253,9 +278,10 @@ function regView(tid){
  const n=S.selIds.filter(id=>ss.some(s=>s.id===id)).length,it=its.find(x=>x.id===S.item),max=ss.length?ss[ss.length-1].seat:0;
  return `<div class="g2r"><div class="card" style="margin:0"><div class="top"><h2>🪑 學生座號盤（1 ~ ${max} 號）</h2><b class="pr-t">已選取 ${n} 位同學</b></div>
  <div class="row" style="margin:8px 0"><button class="pill" data-a="selAll">全選</button><button class="pill" data-a="selNone">清除選取</button><input data-s="seatExpr" value="${esc(S.f.seatExpr)}" placeholder="輸入座號多選（如 1, 3, 5-8）" data-enter="applyRange" style="padding:5px 10px;font-size:14px"><button class="pill" data-a="applyRange">套用</button></div>
- <div class="mu" style="margin-bottom:8px">※ 數字旁標記為目前週期累積：<span class="b-t">-缺點</span> <span class="g-t">+優點</span></div>
- <div class="seats">${ss.map(s=>{const x=stat(s);return `<button class="seat ${S.selIds.includes(s.id)?'on':''} ${x.over?'over':''}" data-a="seat" data-v="${s.id}"><b>${s.seat}</b><span>${esc(s.name)}</span><em><i class="b-t">-${x.bad}</i> <i class="g-t">+${x.good}</i>${x.over?' ⚠':''}</em></button>`}).join('')||'<div class="mu">請先到「學生名冊」新增學生</div>'}</div></div>
- <div class="card" style="margin:0"><div class="top"><h2>✍️ 登記常規項目</h2><span class="mu">${esc(tinfo(tid).win.label)}・上限 ${tinfo(tid).limit} 次</span></div>
+ <div class="row" style="margin:6px 0"><b style="font-size:14px">📅 檢視區間</b>${sperSel(tid)}</div>${S.sper!=='cur'?`<div class="mu" style="margin-bottom:6px">※ 目前檢視的是「${esc(winOf(tid,S.sper).label)}」，新登記的紀錄依登記日期歸入對應區間。</div>`:''}
+ <div class="mu" style="margin-bottom:8px">※ 數字旁標記為所選區間累積：<span class="b-t">-缺點</span> <span class="g-t">+優點</span></div>
+ <div class="seats">${ss.map(s=>{const x=statP(s,S.sper);return `<button class="seat ${S.selIds.includes(s.id)?'on':''} ${x.over?'over':''}" data-a="seat" data-v="${s.id}"><b>${s.seat}</b><span>${esc(s.name)}</span><em><i class="b-t">-${x.bad}</i> <i class="g-t">+${x.good}</i>${x.over?' ⚠':''}</em></button>`}).join('')||'<div class="mu">請先到「學生名冊」新增學生</div>'}</div></div>
+ <div class="card" style="margin:0"><div class="top"><h2>✍️ 登記常規項目</h2><span class="mu">${esc(winOf(tid,S.sper).label)}・上限 ${tinfo(tid).limit} 次</span></div>
  <div class="seg"><button class="${S.mode==='bad'?'on':''}" data-a="mode" data-v="bad">🔴 登記缺點</button><button class="${S.mode==='good'?'on':''}" data-a="mode" data-v="good">🟢 登記優點</button></div>
  <div class="row gap"><div style="flex:2"><div class="mu">登記日期</div><input type="date" data-s="date" value="${S.f.date||B.today}"></div><div style="flex:1"><div class="mu">登記次數</div><input type="number" min="1" max="10" data-s="count" value="${esc(S.f.count)}"></div></div>
  <div class="top gap"><b style="font-size:14px">哪一節課？（選填，可再點一次取消）</b><a class="pr-t" style="font-size:14px;cursor:pointer" data-a="tt" data-v="it">＋ 管理課程</a></div>
@@ -266,22 +292,44 @@ function regView(tid){
  <div class="gap"><button class="${S.mode==='bad'?'pr':'gr'} big" data-a="submit">💾 送出登記${n&&it?`（${n} 位 × ${esc(it.label)}${S.subj?'・'+esc(S.subj):''}）`:''}</button></div></div></div>
  <h2 style="margin-top:18px">最近登記</h2><div class="card">${recRows(B.records.filter(r=>r.tid===tid).sort((a,b)=>b.ts-a.ts).slice(0,6).map(r=>({...r,label:(ss.find(s=>s.id===r.sid)?.seat||'')+' 號 '+(ss.find(s=>s.id===r.sid)?.name||'')+'：'+r.label})),true)}</div>`}
 
+/* 區間下拉（登記頁、總表、警告名單共用同一個選擇） */
+function sperSel(tid){
+ const i=tinfo(tid),sp=S.sper;
+ return `<select data-c="sper" style="max-width:380px"><option value="cur" ${sp==='cur'?'selected':''}>${i.win.cur?'📌 [現行] ':''}${esc(i.win.label)}${i.win.a>'0000'?`（${i.win.a} ~ ${i.win.b>'9998'?'':i.win.b}）`:''}</option><option value="all" ${sp==='all'?'selected':''}>全部紀錄（總累計）</option>${i.ps.filter(p=>!(i.win.cur&&p.start===i.win.a)).map(p=>`<option value="${p.id}" ${sp===p.id?'selected':''}>${esc(p.label)}（${p.start} ~ ${p.end}）</option>`).join('')}</select>`}
 /* 全班總表 */
 function sumView(tid){
  const ss=S.b.students.filter(s=>s.tid===tid),v=ss.find(s=>s.id===S.view),i=tinfo(tid),sp=S.sper;
  const w=winOf(tid,sp),all=!!w.all;
- const opt=`<select data-c="sper" style="max-width:380px"><option value="cur" ${sp==='cur'?'selected':''}>${i.win.cur?'📌 [現行] ':''}${esc(i.win.label)}${i.win.a>'0000'?`（${i.win.a} ~ ${i.win.b>'9998'?'':i.win.b}）`:''}</option><option value="all" ${sp==='all'?'selected':''}>全部紀錄（總累計）</option>${i.ps.filter(p=>!(i.win.cur&&p.start===i.win.a)).map(p=>`<option value="${p.id}" ${sp===p.id?'selected':''}>${esc(p.label)}（${p.start} ~ ${p.end}）</option>`).join('')}</select>`;
+ const opt=sperSel(tid);
  const rows=ss.map(s=>({s,x:statP(s,sp)}));
  return `<div class="card"><div class="row"><b>📅 檢視區間：</b>${opt}</div><div class="mu gap">${all?'顯示所有日期的總累計（不套用警告上限）。':'進度條代表缺點接近上限 '+i.limit+' 次的程度：<span class="g-t">綠＜50%</span>、<span style="color:#b7791f">黃 50%+</span>、<span style="color:#ea580c">橘 80%+</span>、<span class="b-t">紅＝達上限</span>。'}</div></div>
  <div class="card sc"><table class="tbl"><tr><th>座號</th><th>姓名</th><th>缺點${all?'':' / 上限'}</th>${all?'':'<th style="min-width:130px">接近上限</th>'}<th>優點</th><th></th></tr>${rows.map(({s,x})=>`<tr><td>${s.seat}</td><td>${esc(s.name)}</td><td class="b-t"><b>${x.bad}</b>${all?'':`<span class="mu"> / ${x.limit}</span>`}</td>${all?'':`<td>${barHtml(x.bad,x.limit)}<div class="barn ${x.over?'b-t':'mu'}">${x.over?'🚨 已達上限':'還有 '+(x.limit-x.bad)+' 次'}</div></td>`}<td class="g-t"><b>${x.good}</b></td><td><button class="sm" data-a="view" data-v="${s.id}">${S.view===s.id?'收合':'明細'}</button></td></tr>`).join('')||'<tr><td colspan="6" class="mu">尚無學生</td></tr>'}</table></div>`+
  (v?`<div class="card"><div class="top"><h2>${v.seat} 號 ${esc(v.name)}　<code>${esc(clsOf(tid))}-${v.code}</code></h2><span class="mu">${esc(w.label)}</span></div>${recRows(statP(v,sp).rs,true)}</div>`:'')}
 
 /* 警告名單 */
+function noticeHtml(sids){
+ const B=S.b;
+ return sids.map(id=>{const s=B.students.find(x=>x.id===id);if(!s)return '';
+  const x=statP(s,S.sper),t=tinfo(s.tid).t,bad=x.rs.filter(r=>r.type==='bad').sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
+  return `<div class="notice"><div class="nh">📢 常規警告通知單</div>
+  <div><b>班級：</b>${esc(clsOf(s.tid))}　<b>座號：</b>${s.seat} 號　<b>姓名：</b>${esc(s.name)}</div>
+  <div><b>統計區間：</b>${esc(x.w.label)}${x.w.a>'0000'?`（${x.w.a} ~ ${x.w.b>'9998'?'':x.w.b}）`:''}</div>
+  <div>該生於上述區間內，常規缺點累計 <b>${x.bad} 次</b>，已達班級警告門檻（<b>${x.limit} 次</b>），特此通知，敬請家長協助孩子改善。</div>
+  <table><tr><th style="width:90px">日期</th><th style="width:70px">課程</th><th>項目</th><th>備註</th></tr>${bad.map(r=>`<tr><td>${r.date}</td><td>${esc(r.subject||'')}</td><td>${esc(r.label)}</td><td>${esc(r.note||'')}</td></tr>`).join('')}</table>
+  <div class="sg"><span>導師：${esc(t.name||'')}　通知日期：${S.b.today}</span><span>家長簽名：＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿</span></div></div>`}).join('')}
 function warnView(tid){
- const ss=S.b.students.filter(s=>s.tid===tid).map(s=>({s,x:stat(s)})),lim=tinfo(tid).limit;
+ const B=S.b,sp=S.sper,w=winOf(tid,sp),lim=tinfo(tid).limit;
+ const head=`<div class="card noprint"><div class="row"><b>📅 檢視區間：</b>${sperSel(tid)}</div></div>`;
+ if(w.all)return head+`<div class="card noprint mu">警告門檻是依單一區間計算的，請在上方選擇特定區間（例如某次段考）後再查看警告名單。</div><div id="pv" class="pvonly"></div>`;
+ const ss=B.students.filter(s=>s.tid===tid).map(s=>({s,x:statP(s,sp)}));
  const over=ss.filter(o=>o.x.over).sort((a,b)=>b.x.bad-a.x.bad),near=ss.filter(o=>!o.x.over&&o.x.bad>=lim-3&&o.x.bad>0).sort((a,b)=>b.x.bad-a.x.bad);
- const list=a=>a.map(o=>`<div class="rec bad"><div class="ic">${o.s.seat}</div><div><b>${esc(o.s.name)}</b><div class="mu">本期缺點 ${o.x.bad} / ${lim} 次</div></div><button class="sm" data-a="tt" data-v="sum">明細</button></div>`).join('');
- return `<div class="card"><h2>🚨 已達缺點上限（${over.length} 位）</h2>${list(over)||'<div class="mu">目前沒有學生達到上限 👍</div>'}</div><div class="card"><h2>⚠️ 接近上限（差 3 次以內，${near.length} 位）</h2>${list(near)||'<div class="mu">沒有</div>'}</div>`}
+ const wn=s=>B.warnings.find(k=>k.sid===s.id&&k.pk===w.a);
+ const row=o=>{const k=wn(o.s);return `<div class="rec bad" style="flex-wrap:wrap"><div class="ic">${o.s.seat}</div><div><b>${esc(o.s.name)}</b><div class="mu">${esc(w.label)}缺點 ${o.x.bad} / ${lim} 次</div>${k?`<div><span class="badge gn">✅ 已通知家長 ${k.date}（當時 ${k.bad} 次）</span></div>`:'<div><span class="badge er">尚未通知</span></div>'}</div>
+  <div class="row noprint" style="gap:6px">${k?`<button class="sm" data-a="wreprint" data-v="${o.s.id}">🖨️ 補印</button><button class="sm" data-a="wundo" data-v="${k.id}">撤銷登記</button>`:`<button class="sm pr" data-a="wprint" data-v="${o.s.id}">🖨️ 列印通知單並登記</button><button class="sm" data-a="wmark" data-v="${o.s.id}">僅登記</button>`}<button class="sm" data-a="tt" data-v="sum">明細</button></div></div>`};
+ const pend=over.filter(o=>!wn(o.s)).length;
+ return head+`<div class="card noprint"><div class="top"><h2>🚨 已達缺點上限（${over.length} 位，尚未通知 ${pend} 位）</h2>${over.length?`<button class="pr" data-a="wprint" data-v="all">🖨️ 列印全部${pend?'未通知':''}通知單並登記</button>`:''}</div>${over.map(row).join('')||'<div class="mu">目前沒有學生達到上限 👍</div>'}<div class="mu gap">「列印通知單並登記」會產生每位學生的缺點明細通知單（含家長簽名欄）並記錄已通知日期；「僅登記」不列印，只記錄已通知。</div></div>
+ <div class="card noprint"><h2>⚠️ 接近上限（差 3 次以內，${near.length} 位）</h2>${near.map(o=>`<div class="rec"><div class="ic" style="background:#fef3c7;color:#b45309">${o.s.seat}</div><div><b>${esc(o.s.name)}</b><div class="mu">缺點 ${o.x.bad} / ${lim} 次，還有 ${lim-o.x.bad} 次</div>${barHtml(o.x.bad,lim)}</div></div>`).join('')||'<div class="mu">沒有</div>'}</div>
+ <div id="pv" class="pvonly">${noticeHtml(S.pw)}</div>`}
 
 /* 學生名冊 */
 function stuView(tid){
@@ -373,14 +421,29 @@ function teacherView(){
  const t=S.b.teachers[0]||{};
  return `<div class="top noprint"><div><h1>🧑‍🏫 導師工作台</h1><span class="mu">${esc(t.cls||'')} ${esc(t.name||'')}</span></div><div class="row"><button class="sm" data-a="refresh">🔄</button><button class="sm" data-a="out">登出</button></div></div>`+classView(S.b.tid)}
 
+function calView(s){
+ const[y,m]=(S.cal||S.b.today.slice(0,7)).split('-').map(Number),lead=new Date(Date.UTC(y,m-1,1)).getUTCDay(),dim=new Date(Date.UTC(y,m,0)).getUTCDate();
+ const by={};recsOf(s).filter(r=>r.type==='bad').forEach(r=>(by[r.date]=by[r.date]||[]).push(r));
+ const pad=n=>String(n).padStart(2,'0'),ym=y+'-'+pad(m);let cells='';
+ for(let k=0;k<lead;k++)cells+='<div class="d e"></div>';
+ let tot=0;
+ for(let d=1;d<=dim;d++){const ds=ym+'-'+pad(d),l=by[ds]||[],n=l.length;tot+=n;
+  const cls='d'+(n?' b'+Math.min(n,3):'')+(ds===S.b.today?' t':'')+(S.calDay===ds?' sel':'');
+  cells+=n?`<button class="${cls}" data-a="calday" data-v="${ds}" title="${esc(l.map(r=>r.label).join('、'))}">${d}<small>✕${n}</small></button>`:`<div class="${cls}">${d}</div>`}
+ const sd=S.calDay&&by[S.calDay];
+ return `<div class="card"><div class="top"><h2>🗓️ 缺點日曆</h2><div class="row"><button class="sm" data-a="cal" data-d="-1">◀</button><b>${y} 年 ${m} 月</b><button class="sm" data-a="cal" data-d="1">▶</button><button class="sm" data-a="calnow">本月</button></div></div>
+ <div class="mu" style="margin:4px 0 8px">紅色日期代表當天被登記缺點（顏色越深次數越多），點日期可看內容。本月共 <b class="b-t">${tot}</b> 次。</div>
+ <div class="cal">${'日一二三四五六'.split('').map(c=>`<div class="wd">${c}</div>`).join('')}${cells}</div>
+ ${sd?`<div style="margin-top:10px"><b>${S.calDay}</b>${recRows(sd,false)}</div>`:''}</div>`}
 function parentView(){
- const B=S.b,s=B.students[0],x=stat(s),t=B.teachers[0],i=tinfo('t');
+ const B=S.b,s=B.students[0],x=statP(s,S.per),t=B.teachers[0],i=tinfo('t');
  let rs=pickRecs(s);const bad=rs.filter(r=>r.type==='bad'),good=rs.filter(r=>r.type==='good');
  const shown=S.pf==='bad'?bad:S.pf==='good'?good:rs;
  return `<div class="hd"><div class="top"><div><div class="mu">${esc(t.cls)}　導師 ${esc(t.name)}</div><h1 style="font-size:28px;margin:6px 0">座號 ${s.seat} 號 同學</h1><div class="mu">專屬查詢代碼：<b>${esc(S.pcode)}</b>｜學生姓名：${esc(mask(s.name))}（個資安全保護）</div></div><button class="sm" data-a="out">登出查詢</button></div></div>
- <div class="card"><div class="mu">目前檢視週期：</div><div class="row gap"><b style="font-size:18px">${esc(i.win.label)}</b>${i.win.cur?'<span class="badge">進行中</span>':''}</div>${perSel('t')}</div>
+ <div class="card"><div class="mu">目前檢視週期：</div><div class="row gap"><b style="font-size:18px">${esc(x.w.label)}</b>${S.per==='cur'&&i.win.cur?'<span class="badge">進行中</span>':''}</div>${perSel('t')}</div>
  ${x.over?`<div class="warn">🚨 本期缺點已達 ${x.bad} 次，已達警告門檻 ${x.limit} 次，請多留意。</div>`:''}
- <div class="g3"><div class="card"><div class="mu">本期缺點累積</div><b class="b-t">${x.bad}</b><span class="mu">次</span></div><div class="card"><div class="mu">本期優點表揚</div><b class="g-t">${x.good}</b><span class="mu">次</span></div><div class="card"><div class="mu">距離警告門檻</div><b style="color:#d97706">${x.over?0:x.limit-x.bad}</b><span class="mu">次</span></div></div>
+ <div class="g3"><div class="card"><div class="mu">此區間缺點累積</div><b class="b-t">${x.bad}</b><span class="mu">次</span></div><div class="card"><div class="mu">此區間優點表揚</div><b class="g-t">${x.good}</b><span class="mu">次</span></div><div class="card"><div class="mu">距離警告門檻</div><b style="color:#d97706">${x.w.all?'—':x.over?0:x.limit-x.bad}</b>${x.w.all?'':'<span class="mu">次</span>'}</div></div>
+ ${calView(s)}
  <div class="card"><h2>📌 項目統計</h2>${groups(bad).map(g=>`<span class="chip bad">${esc(g.l)} ×${g.n}</span>`).join('')}${groups(good).map(g=>`<span class="chip good">${esc(g.l)} ×${g.n}</span>`).join('')||''}${!rs.length?'<span class="mu">這個區間沒有任何紀錄 🎉</span>':''}</div>
  <div class="card"><div class="top"><h2>📋 登記詳細明細（共 ${shown.length} 筆）</h2><div class="row"><button class="sm ${S.pf==='all'?'pr':''}" data-a="pf" data-v="all">全部</button><button class="sm ${S.pf==='bad'?'b':''}" data-a="pf" data-v="bad">只看缺點</button><button class="sm ${S.pf==='good'?'g':''}" data-a="pf" data-v="good">只看優點</button></div></div>${recRows(shown,false)}</div>`}
 
